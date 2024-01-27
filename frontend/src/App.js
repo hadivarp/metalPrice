@@ -4,6 +4,9 @@ import "./App.css";
 function App() {
   const [priceList, setPriceList] = useState([]);
   const [multipliedRates, setMultipliedRates] = useState([]);
+  const [pageNumber, setPageNumber] = useState(1);
+  const [currentMarket, setCurrentMarket] = useState("en"); // Default to global market
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     fetch("http://localhost:4000")
@@ -18,7 +21,7 @@ function App() {
         const extractedPrices = Object.entries(data.requestData.rates).map(
           ([currency, rate]) => ({
             name: currency,
-            price: rate.toFixed(2), // Adjust the precision as needed
+            price: rate.toFixed(2),
           })
         );
 
@@ -29,7 +32,7 @@ function App() {
         const multipliedRatesData = Object.entries(data.multipliedRates).map(
           ([currency, rate]) => ({
             name: currency,
-            price: rate.toFixed(2)
+            price: rate.toFixed(2),
           })
         );
 
@@ -40,6 +43,37 @@ function App() {
         console.error("Fetch error:", error);
       });
   }, []);
+
+  const itemsPerPage = 10;
+
+  const indexOfLastItem = pageNumber * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+
+  const currentData = currentMarket === "fa" ? multipliedRates : priceList;
+  const filteredData = currentData.filter((item) =>
+    item.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+  const currentDataPage = filteredData.slice(indexOfFirstItem, indexOfLastItem);
+
+  const handlePrev = () => {
+    if (pageNumber === 1) return;
+    setPageNumber(pageNumber - 1);
+  };
+
+  const handleNext = () => {
+    if (pageNumber * itemsPerPage >= filteredData.length) return;
+    setPageNumber(pageNumber + 1);
+  };
+
+  const toggleMarket = () => {
+    setCurrentMarket((prevMarket) => (prevMarket === "en" ? "fa" : "en"));
+    setPageNumber(1); // Reset page number when toggling market
+  };
+
+  const handleSearch = (event) => {
+    setSearchTerm(event.target.value);
+    setPageNumber(1); // Reset page number when changing search term
+  };
 
   return (
     <>
@@ -57,7 +91,12 @@ function App() {
             </ul>
 
             <form className="col-12 col-lg-auto mb-3 mb-lg-0 me-lg-3" role="search">
-              <input type="search" className="form-control" placeholder="Search..." aria-label="Search" />
+              <div className="input-group">
+                <input type="search" className="form-control" placeholder="Search..." aria-label="Search" value={searchTerm} onChange={handleSearch} />
+                <button className="btn btn-primary" type="button" onClick={toggleMarket}>
+                  {currentMarket === "fa" ? "فارسی" : "English"}
+                </button>
+              </div>
             </form>
 
           </div>
@@ -66,8 +105,8 @@ function App() {
 
       <body>
       <div className="container">
-        <h2>Price List</h2>
-        <p>Price list in global market:</p>
+        <h2>{currentMarket === "fa" ? "Persian Markets" : "Price List"}</h2>
+        <p>{currentMarket === "fa" ? "Price list in Persian markets:" : "Price list in global market:"}</p>
         <table className="table table-hover">
           <thead>
           <tr>
@@ -76,7 +115,7 @@ function App() {
           </tr>
           </thead>
           <tbody>
-          {priceList.map((item) => (
+          {currentDataPage.map((item) => (
             <tr key={item.name}>
               <td>{item.name}</td>
               <td>{item.price}</td>
@@ -84,25 +123,19 @@ function App() {
           ))}
           </tbody>
         </table>
-
-
-        <p>persian markets:</p>
-        <table className="table table-hover">
-          <thead>
-          <tr>
-            <th>Name</th>
-            <th>Price</th>
-          </tr>
-          </thead>
-          <tbody>
-          {multipliedRates.map((item) => (
-            <tr key={item.name}>
-              <td>{item.name}</td>
-              <td>{item.price}</td>
-            </tr>
-          ))}
-          </tbody>
-        </table>
+        <div className="pagination">
+          <button className="btn btn-primary" onClick={handlePrev} disabled={pageNumber === 1}>
+            Prev
+          </button>
+          {/*<span className="mx-2">Page {pageNumber}</span>*/}
+          <button
+            className="btn btn-primary"
+            onClick={handleNext}
+            disabled={pageNumber * itemsPerPage >= filteredData.length}
+          >
+            Next
+          </button>
+        </div>
       </div>
       </body>
     </>
